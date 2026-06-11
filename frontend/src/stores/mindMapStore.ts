@@ -107,13 +107,14 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
 }));
 
 function mutateActive(set: any, get: any, recipe: (file: MindMapFile) => void) {
-  const active = get().active();
+  const active = get().active() as MindMapFile;
   mutateFile(set, get, active.id, recipe);
 }
 
 function mutateFile(set: any, get: any, id: string, recipe: (file: MindMapFile) => void) {
-  const previous = get().active();
-  const files = produce(get().files, (draft: MindMapFile[]) => {
+  const previous = get().active() as MindMapFile;
+  const baseFiles = get().files as MindMapFile[];
+  const files = produce(baseFiles, (draft: MindMapFile[]) => {
     const file = draft.find((item) => item.id === id);
     if (!file) return;
     recipe(file);
@@ -121,5 +122,5 @@ function mutateFile(set: any, get: any, id: string, recipe: (file: MindMapFile) 
   });
   const saved = files.find((item) => item.id === id);
   if (saved) saveFile(saved);
-  set({ files, history: [...get().history, previous], future: [] });
+  set({ files, history: [...(get().history as MindMapFile[]), previous], future: [] });
 }
