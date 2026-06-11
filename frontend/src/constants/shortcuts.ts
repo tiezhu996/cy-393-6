@@ -4,5 +4,7 @@ export const SHORTCUTS = {
   DELETE: "Delete",
   EDIT: "F2",
   UNDO: "z",
-  REDO: "y"
+  REDO: "y",
+  COPY: "c",
+  PASTE: "v"
 };

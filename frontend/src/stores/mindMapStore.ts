@@ -4,12 +4,13 @@ import type { Edge, Node } from "reactflow";
 import { deleteFile, loadFiles, saveFile } from "../storage/indexedDb";
 import type { MindMapFile } from "../types/mindmap";
 import { createNode, defaultFile } from "../utils/factory";
-import { subtreeIds } from "../utils/tree";
+import { cloneSubtree, extractSubtree, subtreeIds, type SubtreeData } from "../utils/tree";
 
 interface MindMapState {
   files: MindMapFile[];
   activeId: string;
   selectedId?: string;
+  clipboard: SubtreeData | null;
   history: MindMapFile[];
   future: MindMapFile[];
   hydrate: () => Promise<void>;
@@ -24,6 +25,8 @@ interface MindMapState {
   removeSelected: () => void;
   setTheme: (theme: string) => void;
   selectNode: (id?: string) => void;
+  copySelected: () => void;
+  pasteToSelected: () => void;
   undo: () => void;
   redo: () => void;
 }
@@ -31,6 +34,8 @@ interface MindMapState {
 export const useMindMapStore = create<MindMapState>((set, get) => ({
   files: [],
   activeId: "",
+  selectedId: undefined,
+  clipboard: null,
   history: [],
   future: [],
   hydrate: async () => {
@@ -67,6 +72,36 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
   },
   setTheme: (theme) => mutateActive(set, get, (file) => { file.theme = theme; }),
   selectNode: (id) => set({ selectedId: id }),
+  copySelected: () => {
+    const id = get().selectedId;
+    const active = get().active();
+    if (!id || !active) return;
+    const subtree = extractSubtree(id, active.nodes, active.edges);
+    set({ clipboard: subtree });
+  },
+  pasteToSelected: () => {
+    const clipboard = get().clipboard;
+    const selectedId = get().selectedId;
+    const active = get().active();
+    if (!clipboard || !active || !selectedId) return;
+    const parentNode = active.nodes.find((node) => node.id === selectedId);
+    if (!parentNode) return;
+    const rootClip = clipboard.nodes.find((node) => node.id === clipboard.rootId);
+    if (!rootClip) return;
+    const offsetX = parentNode.position.x + 240 - rootClip.position.x;
+    const offsetY = parentNode.position.y - rootClip.position.y + 40;
+    const cloned = cloneSubtree(clipboard, offsetX, offsetY);
+    const connectEdge: Edge = {
+      id: `${selectedId}-${cloned.rootId}`,
+      source: selectedId,
+      target: cloned.rootId,
+      animated: true
+    };
+    mutateActive(set, get, (file) => {
+      file.nodes.push(...cloned.nodes);
+      file.edges.push(...cloned.edges, connectEdge);
+    });
+  },
   undo: () => { const history = get().history; const prev = history[history.length - 1]; if (!prev) return; set({ future: [get().active(), ...get().future], history: history.slice(0, -1), files: get().files.map((f) => f.id === prev.id ? prev : f) }); },
   redo: () => { const next = get().future[0]; if (!next) return; set({ history: [...get().history, get().active()], future: get().future.slice(1), files: get().files.map((f) => f.id === next.id ? next : f) }); }
 }));
