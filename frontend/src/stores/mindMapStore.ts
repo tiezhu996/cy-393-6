@@ -31,6 +31,8 @@ interface MindMapState {
   redo: () => void;
 }
 
+const ACTIVE_ID_KEY = "mindmap-active-id";
+
 export const useMindMapStore = create<MindMapState>((set, get) => ({
   files: [],
   activeId: "",
@@ -42,17 +44,29 @@ export const useMindMapStore = create<MindMapState>((set, get) => ({
     const saved = await loadFiles();
     const files = saved.length ? saved : [defaultFile()];
     files.forEach(saveFile);
-    set({ files, activeId: files[0].id });
+    const storedId = typeof localStorage !== "undefined" ? localStorage.getItem(ACTIVE_ID_KEY) : null;
+    const restoredId = storedId && files.some((f) => f.id === storedId) ? storedId : files[0].id;
+    set({ files, activeId: restoredId });
   },
   active: () => get().files.find((file) => file.id === get().activeId) ?? get().files[0],
-  selectFile: (id) => set({ activeId: id, selectedId: undefined }),
+  selectFile: (id) => {
+    if (typeof localStorage !== "undefined") localStorage.setItem(ACTIVE_ID_KEY, id);
+    set({ activeId: id, selectedId: undefined });
+  },
   createFile: () => {
     const file = defaultFile();
     saveFile(file);
+    if (typeof localStorage !== "undefined") localStorage.setItem(ACTIVE_ID_KEY, file.id);
     set({ files: [file, ...get().files], activeId: file.id });
   },
   renameFile: (id, name) => mutateFile(set, get, id, (file) => { file.name = name; }),
-  removeFile: (id) => { deleteFile(id); const files = get().files.filter((f) => f.id !== id); set({ files, activeId: files[0]?.id ?? "" }); },
+  removeFile: (id) => {
+    deleteFile(id);
+    const files = get().files.filter((f) => f.id !== id);
+    const nextId = files[0]?.id ?? "";
+    if (typeof localStorage !== "undefined") localStorage.setItem(ACTIVE_ID_KEY, nextId);
+    set({ files, activeId: nextId });
+  },
   setNodesEdges: (nodes, edges) => mutateActive(set, get, (file) => { file.nodes = nodes; file.edges = edges; }),
   addChild: () => {
     const active = get().active(); const selected = active.nodes.find((n) => n.id === get().selectedId) ?? active.nodes[0]; if (!selected) return;
