@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { margin: 0; color: #0f172a; }
+button { cursor: pointer; }
