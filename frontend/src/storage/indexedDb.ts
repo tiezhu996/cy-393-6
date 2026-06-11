@@ -20,12 +20,28 @@ export async function loadFiles(): Promise<MindMapFile[]> {
   });
 }
 
-export async function saveFile(file: MindMapFile) {
-  const db = await openDb();
-  db.transaction(STORE, "readwrite").objectStore(STORE).put(file);
+export function saveFile(file: MindMapFile): Promise<void> {
+  return new Promise(async (resolve, reject) => {
+    const db = await openDb();
+    const tx = db.transaction(STORE, "readwrite");
+    const store = tx.objectStore(STORE);
+    const req = store.put(file);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
 }
 
-export async function deleteFile(id: string) {
-  const db = await openDb();
-  db.transaction(STORE, "readwrite").objectStore(STORE).delete(id);
+export function deleteFile(id: string): Promise<void> {
+  return new Promise(async (resolve, reject) => {
+    const db = await openDb();
+    const tx = db.transaction(STORE, "readwrite");
+    const store = tx.objectStore(STORE);
+    const req = store.delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
 }

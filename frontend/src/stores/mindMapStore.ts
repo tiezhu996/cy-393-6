@@ -118,7 +118,8 @@ function mutateFile(set: any, get: any, id: string, recipe: (file: MindMapFile) 
     if (!file) return;
     recipe(file);
     file.updatedAt = new Date().toISOString();
-    saveFile(file);
   });
+  const saved = files.find((item) => item.id === id);
+  if (saved) saveFile(saved);
   set({ files, history: [...get().history, previous], future: [] });
 }
